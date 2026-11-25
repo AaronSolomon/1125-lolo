@@ -1,1 +1,128 @@
-Hello, GitHub
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speech to Text</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 42rem;
+      margin: 3rem auto;
+      padding: 0 1rem;
+    }
+    #sentence {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 2.5rem;
+      padding: 0.65rem;
+      font: inherit;
+    }
+    button {
+      margin: 0.75rem 0.5rem 0 0;
+      padding: 0.55rem 1rem;
+      font: inherit;
+      cursor: pointer;
+    }
+    #status {
+      min-height: 1.5em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Speech to Text</h1>
+
+  <label for="sentence">Recognized sentence</label>
+  <input id="sentence" name="sentence" type="text" autocomplete="off">
+
+  <div>
+    <button id="start" type="button">Start</button>
+    <button id="end" type="button">End</button>
+  </div>
+  <p id="status" role="status" aria-live="polite">Ready.</p>
+
+  <script>
+    (() => {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      const sentence = document.getElementById("sentence");
+      const startButton = document.getElementById("start");
+      const endButton = document.getElementById("end");
+      const status = document.getElementById("status");
+
+      if (!SpeechRecognition) {
+        status.textContent =
+          "Speech recognition is not supported by this browser. Try a browser that supports the Web Speech API, such as Chrome.";
+        startButton.disabled = true;
+        endButton.disabled = true;
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = navigator.language || "en-US";
+
+      let isRecognizing = false;
+      let textBeforeSession = "";
+
+      recognition.onstart = () => {
+        isRecognizing = true;
+        status.textContent = "Listening…";
+        startButton.disabled = true;
+        endButton.disabled = false;
+      };
+
+      recognition.onresult = (event) => {
+        let finalText = "";
+        let interimText = "";
+
+        for (let i = 0; i < event.results.length; i += 1) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript + " ";
+          } else {
+            interimText += transcript;
+          }
+        }
+
+        sentence.value =
+          textBeforeSession + finalText + interimText;
+      };
+
+      recognition.onerror = (event) => {
+        status.textContent = "Speech recognition error: " + event.error;
+      };
+
+      recognition.onend = () => {
+        isRecognizing = false;
+        startButton.disabled = false;
+        endButton.disabled = true;
+        status.textContent = "Recognition stopped.";
+      };
+
+      startButton.addEventListener("click", () => {
+        if (isRecognizing) return;
+        textBeforeSession = sentence.value
+          ? sentence.value.trimEnd() + " "
+          : "";
+        try {
+          recognition.start();
+        } catch (error) {
+          status.textContent = "Could not start recognition: " + error.message;
+        }
+      });
+
+      endButton.addEventListener("click", () => {
+        if (isRecognizing) {
+          recognition.stop();
+          status.textContent = "Stopping…";
+        }
+      });
+
+      endButton.disabled = true;
+    })();
+  </script>
+</body>
+</html>
